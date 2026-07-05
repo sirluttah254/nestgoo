@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nestgo · AI Property Management</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet" />
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f4f6fa; }
+        .login-card { background: white; border-radius: 2rem; box-shadow: 0 24px 48px rgba(0,0,0,0.15); }
+        .password-toggle {
+            position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem;
+        }
+        .password-toggle:hover { color: #1e293b; }
+        .password-wrapper { position: relative; }
+        .bg-login {
+            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;
+        }
+        #app.hidden { display: none !important; }
+        #loginPage.hidden { display: none !important; }
+
+        .progressive-card { transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+        .progressive-card .expanded-content {
+            max-height: 0; opacity: 0; overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+        }
+        .progressive-card.expanded .expanded-content {
+            max-height: 800px; opacity: 1; margin-top: 1rem;
+        }
+        .progressive-card .summary { cursor: pointer; transition: background 0.15s ease; }
+        .progressive-card .summary:hover { background: rgba(43, 108, 176, 0.04); }
+        .priority-high { background: #fee2e2; color: #b91c1c; }
+        .priority-medium { background: #fef3c7; color: #92400e; }
+        .priority-low { background: #d1fae5; color: #065f46; }
+        .sentiment-negative { border-left: 4px solid #dc2626; }
+        .sentiment-neutral { border-left: 4px solid #f59e0b; }
+        .sentiment-positive { border-left: 4px solid #16a34a; }
+        .mode-toggle button { transition: all 0.2s ease; }
+        .mode-toggle .active-tenant { background: #1a365d; color: white; box-shadow: 0 4px 12px rgba(26,54,93,0.3); }
+        .mode-toggle .active-landlord { background: #2b6cb0; color: white; box-shadow: 0 4px 12px rgba(43,108,176,0.3); }
+        .scenario-btn { transition: all 0.2s ease; }
+        .scenario-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .toast { animation: toastIn 0.4s ease forwards; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .search-expand .advanced-filters {
+            max-height: 0; opacity: 0; overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+        }
+        .search-expand.open .advanced-filters {
+            max-height: 400px; opacity: 1; margin-top: 1rem;
+        }
+        .typing-dot {
+            animation: typingBounce 1.4s infinite both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .log-entry {
+            animation: logSlide 0.25s ease forwards;
+            opacity: 0; transform: translateX(-8px);
+        }
+        @keyframes logSlide { to { opacity: 1; transform: translateX(0); } }
+        .badge-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .glass-panel {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .bg-grid {
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(43,108,176,0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(26,54,93,0.04) 0%, transparent 50%);
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .message-bubble { transition: all 0.2s ease; }
+        .message-bubble:hover { transform: scale(1.01); }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-content {
+            background: white;
+            max-width: 600px; width: 90%; max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 2rem; padding: 2rem;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .tenant-tab {
+            cursor: pointer; padding: 0.5rem 1.5rem; border-radius: 9999px;
+            font-weight: 500; transition: all 0.2s;
+        }
+        .tenant-tab.active {
+            background: #1a365d; color: white; box-shadow: 0 4px 12px rgba(26,54,93,0.3);
+        }
+        .tenant-tab:not(.active):hover { background: #e2e8f0; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+        .ticket-scroll {
+            max-height: 420px; overflow-y: auto; padding-right: 4px;
+        }
+        .ticket-scroll::-webkit-scrollbar { width: 4px; }
+        .ticket-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+        .property-card { transition: all 0.2s ease; }
+        .property-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================= -->
+    <!--  LOGIN PAGE -->
+    <!-- ============================================================= -->
+    <div id="loginPage" class="bg-login">
+        <div class="login-card w-full max-w-md mx-auto p-6 sm:p-8 md:p-10">
+            <div class="text-center mb-6">
+                <div class="inline-block w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1a365d] to-[#2b6cb0] text-white text-3xl font-bold flex items-center justify-center shadow-lg mx-auto mb-3">N</div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Welcome to Nestgo</h1>
+                <p class="text-sm text-gray-500 mt-1">AI-powered property management</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#2b6cb0] focus:border-transparent outline-none transition" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="loginPassword" placeholder="Enter your password" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#2b6cb0] focus:border-transparent outline-none transition pr-12" />
+                        <button type="button" id="togglePassword" class="password-toggle" aria-label="Toggle password visibility">👁️</button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" class="rounded border-gray-300 text-[#2b6cb0] focus:ring-[#2b6cb0]" /> Remember me
+                    </label>
+                    <a href="#" class="text-[#2b6cb0] hover:underline">Forgot password?</a>
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-[#1a365d] text-white py-3 rounded-xl font-medium hover:bg-[#2b4a7a] transition shadow-sm text-base">Sign In</button>
+                <button onclick="skipLogin()" class="w-full text-sm text-gray-400 hover:text-gray-600 underline">Skip Login (Demo)</button>
+            </div>
+
+            <div id="loginError" class="mt-4 text-sm text-red-600 hidden text-center bg-red-50 p-2 rounded-lg border border-red-200">❌ Invalid email or password. Please try again.</div>
+            <p class="text-center text-xs text-gray-400 mt-6">Prototype · No real data stored</p>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!--  MAIN APP -->
+    <!-- ============================================================= -->
+    <div id="app" class="hidden">
+        <!-- HEADER -->
+        <header class="bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-50 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1a365d] to-[#2b6cb0] flex items-center justify-center text-white font-bold text-lg shadow-md">N</div>
+                    <span class="text-xl font-bold text-[#1a365d] tracking-tight">Nestgo</span>
+                    <span class="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">prototype</span>
+                </div>
+                <div class="mode-toggle flex bg-gray-100/80 rounded-xl p-1 shadow-inner">
+                    <button id="modeTenant" class="px-5 py-1.5 rounded-lg text-sm font-medium transition-all active-tenant">👤 Tenant</button>
+                    <button id="modeLandlord" class="px-5 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-600">🏠 Landlord</button>
+                </div>
+                <div class="flex items-center gap-3 text-sm text-gray-500">
+                    <span class="hidden sm:inline">⚡ AI <span id="aiStatus" class="font-medium text-green-600">active</span></span>
+                    <span class="w-2 h-2 rounded-full bg-green-500 badge-pulse" id="aiIndicator"></span>
+                    <button id="demoModeBtn" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full transition font-medium">▶ Demo</button>
+                    <button onclick="logout()" class="text-xs text-red-500 hover:text-red-700 font-medium">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div id="dashboard" class="space-y-6">
+
+                <!-- ===== TENANT VIEW ===== -->
+                <div id="tenantView" class="space-y-6">
+                    <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
+                        <button class="tenant-tab active" data-tab="searchTab" onclick="switchTenantTab('searchTab')">🔍 Search Homes</button>
+                        <button class="tenant-tab" data-tab="maintenanceTab" onclick="switchTenantTab('maintenanceTab')">🔧 Maintenance</button>
+                    </div>
+
+                    <!-- Search Tab -->
+                    <div id="searchTab" class="tab-content active space-y-6">
+                        <div class="progressive-card glass-panel rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                            <div class="summary flex items-center justify-between" onclick="toggleSearch()">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <span class="text-2xl">🔍</span>
+                                    <input id="searchInput" type="text" placeholder="Search for a home..." class="flex-1 bg-transparent border-0 focus:ring-0 text-gray-700 placeholder-gray-400 text-lg outline-none" />
+                                    <button class="text-sm text-[#2b6cb0] font-medium hover:underline whitespace-nowrap" onclick="event.stopPropagation(); toggleSearch()">Filters <span id="filterChevron">▾</span></button>
+                                </div>
+                                <button class="ml-3 bg-[#1a365d] text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-[#2b4a7a] transition shadow-sm">Search</button>
+                            </div>
+                            <div class="advanced-filters">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-gray-200/50">
+                                    <div><label class="text-xs text-gray-500 font-medium">Price range</label><select class="w-full mt-1 text-sm border-gray-200 rounded-lg bg-white/70"><option>Any</option><option>KSh 20k–40k</option><option>KSh 40k–80k</option><option>KSh 80k+</option></select></div>
+                                    <div><label class="text-xs text-gray-500 font-medium">Property type</label><select class="w-full mt-1 text-sm border-gray-200 rounded-lg bg-white/70"><option>Any</option><option>Apartment</option><option>House</option><option>Bedsitter</option></select></div>
+                                    <div><label class="text-xs text-gray-500 font-medium">Bedrooms</label><select class="w-full mt-1 text-sm border-gray-200 rounded-lg bg-white/70"><option>Any</option><option>Studio</option><option>1</option><option>2</option><option>3+</option></select></div>
+                                    <div><label class="text-xs text-gray-500 font-medium">Location</label><select class="w-full mt-1 text-sm border-gray-200 rounded-lg bg-white/70"><option>Any</option><option>Westlands</option><option>Kilimani</option><option>Lavington</option><option>Kileleshwa</option><option>Runda</option><option>Parklands</option></select></div>
+                                </div>
+                                <div class="flex justify-end mt-3 gap-2">
+                                    <button class="text-xs text-gray-400 hover:text-gray-600">Reset</button>
+                                    <button class="text-xs bg-[#2b6cb0] text-white px-4 py-1.5 rounded-lg font-medium hover:bg-[#1a4f7a]">Apply filters</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">🏠 Available Properties in Nairobi</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 45,000</div>
+                                    <p class="text-sm text-gray-600">2-bedroom apartment</p>
+                                    <p class="text-xs text-gray-400">Westlands · 1,200 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Available</span></div>
+                                </div>
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 78,000</div>
+                                    <p class="text-sm text-gray-600">3-bedroom maisonette</p>
+                                    <p class="text-xs text-gray-400">Kilimani · 1,800 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Available</span></div>
+                                </div>
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 32,000</div>
+                                    <p class="text-sm text-gray-600">1-bedroom bedsitter</p>
+                                    <p class="text-xs text-gray-400">Lavington · 650 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Under offer</span></div>
+                                </div>
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 62,000</div>
+                                    <p class="text-sm text-gray-600">2-bedroom duplex</p>
+                                    <p class="text-xs text-gray-400">Kileleshwa · 1,400 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Available</span></div>
+                                </div>
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 120,000</div>
+                                    <p class="text-sm text-gray-600">4-bedroom penthouse</p>
+                                    <p class="text-xs text-gray-400">Runda · 2,400 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Available</span></div>
+                                </div>
+                                <div class="property-card bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 hover:shadow-md transition">
+                                    <div class="text-xl font-bold text-[#1a365d]">KSh 55,000</div>
+                                    <p class="text-sm text-gray-600">3-bedroom townhouse</p>
+                                    <p class="text-xs text-gray-400">Parklands · 1,600 sq ft</p>
+                                    <div class="mt-2 flex gap-1 text-xs"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Available</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maintenance Tab -->
+                    <div id="maintenanceTab" class="tab-content space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 flex items-center gap-4">
+                                <span class="text-3xl">🔧</span>
+                                <div><div class="text-2xl font-bold text-[#1a365d]" id="tenantTicketCount">2</div><div class="text-xs text-gray-500">Active requests</div></div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 flex items-center gap-4">
+                                <span class="text-3xl">⚡</span>
+                                <div><div class="text-2xl font-bold text-[#dc2626]" id="tenantHighCount">1</div><div class="text-xs text-gray-500">High priority</div></div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50 flex items-center gap-4">
+                                <span class="text-3xl">✅</span>
+                                <div><div class="text-2xl font-bold text-[#16a34a]" id="tenantResolvedCount">1</div><div class="text-xs text-gray-500">Resolved</div></div>
+                            </div>
+                        </div>
+                        <div class="progressive-card glass-panel rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                            <div class="summary flex items-center justify-between" onclick="toggleTicketSection()">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xl">📋</span>
+                                    <h3 class="font-semibold text-gray-800">Your maintenance requests</h3>
+                                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full" id="tenantTicketBadge">2 active</span>
+                                </div>
+                                <span class="text-sm text-[#2b6cb0] font-medium">View all <span id="ticketChevron">▾</span></span>
+                            </div>
+                            <div class="expanded-content">
+                                <div id="tenantTickets" class="ticket-scroll space-y-3"></div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">📝 Report an issue</h3>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <input id="newTicketDesc" type="text" placeholder="Describe the issue..." class="flex-1 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#2b6cb0] focus:border-transparent outline-none bg-gray-50/70" />
+                                <button id="submitTicketBtn" onclick="submitMaintenance()" class="bg-[#1a365d] text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2b4a7a] transition shadow-sm whitespace-nowrap">Submit request</button>
+                            </div>
+                            <div id="ticketTypingIndicator" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-500">
+                                <span>AI is analyzing</span>
+                                <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                            </div>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button onclick="quickTicket('Burst pipe in the kitchen, water everywhere!')" class="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 hover:bg-red-100 transition">💧 Burst pipe</button>
+                                <button onclick="quickTicket('The heater stopped working and it\'s freezing inside.')" class="text-xs bg-orange-50 text-orange-700 px-3 py-1 rounded-full border border-orange-200 hover:bg-orange-100 transition">❄️ No heating</button>
+                                <button onclick="quickTicket('The cabinet door handle is loose and keeps falling off.')" class="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200 hover:bg-green-100 transition">🚪 Loose handle</button>
+                                <button onclick="quickTicket('I smell gas near the stove. Please send help immediately!')" class="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 hover:bg-red-100 transition">🔥 Gas leak</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== LANDLORD VIEW ===== -->
+                <div id="landlordView" class="space-y-6 hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50"><div class="text-2xl font-bold text-[#1a365d]">8</div><div class="text-xs text-gray-500">Properties</div></div>
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50"><div class="text-2xl font-bold text-[#1a365d]">14</div><div class="text-xs text-gray-500">Total tenants</div></div>
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50"><div class="text-2xl font-bold text-[#dc2626]" id="highPriorityCount">2</div><div class="text-xs text-gray-500">High-priority tickets</div></div>
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200/50"><div class="text-2xl font-bold text-[#16a34a]">94%</div><div class="text-xs text-gray-500">Tenant satisfaction</div></div>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2">💬 Messages <span class="text-xs font-normal text-gray-400">sorted by sentiment</span></h3>
+                            <span class="text-xs bg-[#2b6cb0]/10 text-[#2b6cb0] px-3 py-1 rounded-full font-medium">AI triage active</span>
+                        </div>
+                        <div id="messageFeed" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+                    </div>
+                    <div class="progressive-card glass-panel rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                        <div class="summary flex items-center justify-between" onclick="toggleTicketSectionLandlord()">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">📋</span>
+                                <h3 class="font-semibold text-gray-800">All maintenance tickets</h3>
+                                <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full" id="landlordTicketBadge">4 total</span>
+                            </div>
+                            <span class="text-sm text-[#2b6cb0] font-medium">Expand <span id="ticketChevronL">▾</span></span>
+                        </div>
+                        <div class="expanded-content">
+                            <div id="landlordTickets" class="ticket-scroll space-y-3"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200/50">
+                        <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">✉️ Send to tenant</h3>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" placeholder="Tenant name..." class="sm:w-48 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#2b6cb0] outline-none bg-gray-50/70" />
+                            <input id="landlordMsgInput" type="text" placeholder="Type a message..." class="flex-1 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#2b6cb0] outline-none bg-gray-50/70" />
+                            <button onclick="sendLandlordMessage()" class="bg-[#2b6cb0] text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#1a4f7a] transition shadow-sm">Send</button>
+                        </div>
+                        <div id="landlordChatTyping" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-500">
+                            <span>AI analyzing sentiment</span>
+                            <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                            <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                            <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button onclick="quickMessage('The water heater is making a loud noise and I\'m worried it might break.')" class="text-xs bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full border border-yellow-200 hover:bg-yellow-100 transition">🔊 Noise complaint</button>
+                            <button onclick="quickMessage('The apartment is absolutely perfect! I love the natural light in the living room.')" class="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200 hover:bg-green-100 transition">😊 Positive feedback</button>
+                            <button onclick="quickMessage('This is completely unacceptable. The roof has been leaking for 3 days and nobody has responded.')" class="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 hover:bg-red-100 transition">😤 Urgent complaint</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI LOG, TOAST, TESTING HARNESS -->
+                <div class="bg-white/90 rounded-2xl p-5 shadow-sm border border-gray-200/50 mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-gray-800 flex items-center gap-2">📡 AI Activity Log</h3>
+                        <button onclick="clearLog()" class="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+                    </div>
+                    <div id="aiLog" class="max-h-40 overflow-y-auto space-y-1 text-xs font-mono text-gray-600 bg-gray-50/70 rounded-xl p-3 border border-gray-200/50">
+                        <div class="text-gray-400">▶️ AI agent initialized</div>
+                    </div>
+                </div>
+                <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2 max-w-sm w-full pointer-events-none"></div>
+                <div class="mt-8 border-t border-gray-300/40 pt-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-sm font-medium text-gray-600">🧪 Testing Harness</span>
+                        <span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">click scenarios to test AI</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <button onclick="testScenario('maintenance', 'Burst pipe in the kitchen, water is flooding the floor!')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-red-300 hover:shadow-md transition">💧 Burst pipe <span class="block text-[10px] text-gray-400">High priority</span></button>
+                        <button onclick="testScenario('maintenance', 'The heating system is broken and it\'s 10°F outside. Please help!')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-orange-300 hover:shadow-md transition">❄️ No heating <span class="block text-[10px] text-gray-400">High priority</span></button>
+                        <button onclick="testScenario('maintenance', 'I smell gas near the stove. This is an emergency!')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-red-300 hover:shadow-md transition">🔥 Gas leak <span class="block text-[10px] text-gray-400">Critical</span></button>
+                        <button onclick="testScenario('maintenance', 'The cabinet door handle is loose and keeps falling off.')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-green-300 hover:shadow-md transition">🚪 Loose handle <span class="block text-[10px] text-gray-400">Low priority</span></button>
+                        <button onclick="testScenario('sentiment', 'I am absolutely furious. This is the third time I\'ve reported this issue and nothing has been done.')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-red-300 hover:shadow-md transition">😤 Angry tenant <span class="block text-[10px] text-gray-400">Sentiment: negative</span></button>
+                        <button onclick="testScenario('sentiment', 'Thank you so much for fixing the sink so quickly! You guys are the best.')" class="scenario-btn bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-left hover:border-green-300 hover:shadow-md transition">😊 Happy tenant <span class="block text-[10px] text-gray-400">Sentiment: positive</span></button>
+                    </div>
+                    <div id="testResult" class="mt-3 text-sm text-gray-600 bg-white/70 rounded-xl p-3 border border-gray-200/50">
+                        <span class="text-gray-400">Click a scenario to see the AI agent's analysis in real-time.</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-gray-400 border-t border-gray-200/40 mt-6">
+            Nestgo prototype · AI-driven property management · Built with ❤️
+        </footer>
+    </div>
+
+    <!-- MODAL -->
+    <div id="ticketModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">🔍 Ticket Details</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div id="ticketModalBody" class="space-y-3 text-sm"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  USER DATABASE
+        // ============================================================
+        const USERS = [
+            { email: 'landlord1@nestgo.com', password: 'pass123', role: 'landlord', name: 'James Mwangi' },
+            { email: 'landlord2@nestgo.com', password: 'pass456', role: 'landlord', name: 'Grace Akinyi' },
+            { email: 'tenant1@nestgo.com', password: 'tpass1', role: 'tenant', name: 'Alice Wanjiru' },
+            { email: 'tenant2@nestgo.com', password: 'tpass2', role: 'tenant', name: 'Brian Ochieng' },
+            { email: 'tenant3@nestgo.com', password: 'tpass3', role: 'tenant', name: 'Cynthia Muthoni' },
+            { email: 'tenant4@nestgo.com', password: 'tpass4', role: 'tenant', name: 'David Kiprop' },
+            { email: 'tenant5@nestgo.com', password: 'tpass5', role: 'tenant', name: 'Emily Nyambura' },
+            { email: 'tenant6@nestgo.com', password: 'tpass6', role: 'tenant', name: 'Frank Odhiambo' },
+            { email: 'tenant7@nestgo.com', password: 'tpass7', role: 'tenant', name: 'Grace Atieno' },
+            { email: 'tenant8@nestgo.com', password: 'tpass8', role: 'tenant', name: 'Henry Njoroge' },
+        ];
+
+        // ============================================================
+        //  STATE
+        // ============================================================
+        const STORAGE_KEY = 'nestgo_state';
+        let state = {
+            mode: 'tenant',
+            tickets: [],
+            messages: [],
+            nextTicketId: 1,
+            nextMsgId: 1,
+            searchExpanded: false,
+            ticketExpanded: false,
+            ticketExpandedL: false,
+            demoRunning: false,
+            loggedIn: false,
+            currentUser: null,
+        };
+
+        // ============================================================
+        //  PERSISTENCE
+        // ============================================================
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state.tickets = parsed.tickets ? parsed.tickets.map(t => ({ ...t, createdAt: new Date(t.createdAt) })) :
+                        [];
+                    state.messages = parsed.messages ? parsed.messages.map(m => ({ ...m, time: new Date(m.time) })) : [];
+                    state.nextTicketId = parsed.nextTicketId || 1;
+                    state.nextMsgId = parsed.nextMsgId || 1;
+                    state.loggedIn = parsed.loggedIn || false;
+                }
+            } catch (e) { console.warn('State load failed', e); }
+        }
+
+        function saveState() {
+            try {
+                const toStore = {
+                    tickets: state.tickets.map(t => ({ ...t, createdAt: t.createdAt.toISOString() })),
+                    messages: state.messages.map(m => ({ ...m, time: m.time.toISOString() })),
+                    nextTicketId: state.nextTicketId,
+                    nextMsgId: state.nextMsgId,
+                    loggedIn: state.loggedIn,
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+            } catch (e) { console.warn('State save failed', e); }
+        }
+
+        // ============================================================
+        //  AI AGENT (stub – full implementation in final code)
+        // ============================================================
+        const AIAgent = {
+            async triage(description) {
+                // Simulate AI triage
+                const priority = description.toLowerCase().includes('burst') || description.toLowerCase().includes('gas') ?
+                    'high' :
+                    description.toLowerCase().includes('drip') || description.toLowerCase().includes('noise') ? 'medium' :
+                    'low';
+                const category = description.toLowerCase().includes('pipe') ? 'Plumbing' :
+                    description.toLowerCase().includes('heat') ? 'HVAC' :
+                    description.toLowerCase().includes('electrical') ? 'Electrical' : 'Maintenance';
+                const response = priority === 'high' ?
+                    '🚨 Emergency response initiated. A technician has been dispatched and will contact you within 30 minutes.' :
+                    priority === 'medium' ?
+                    '📋 Issue logged. A maintenance team member will reach out within 24 hours to schedule a visit.' :
+                    '✅ Request received. This has been added to our routine maintenance queue and will be addressed within 48 hours.';
+                return { priority, category, response, reasoning: 'Simulated AI reasoning.' };
+            },
+            async analyzeSentiment(text) {
+                const score = text.toLowerCase().includes('furious') || text.toLowerCase().includes('unacceptable') ? -0.9 :
+                    text.toLowerCase().includes('perfect') || text.toLowerCase().includes('love') ? 0.8 : 0.2;
+                const label = score < -0.3 ? 'negative' : score > 0.3 ? 'positive' : 'neutral';
+                const flagged = score < -0.4;
+                return { score, label, flagged };
+            }
+        };
+
+        // ============================================================
+        //  LOGGING & TOASTS
+        // ============================================================
+        function addLog(msg) {
+            const container = document.getElementById('aiLog');
+            if (!container) return;
+            const entry = document.createElement('div');
+            entry.className = 'log-entry text-gray-600';
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${msg}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            while (container.children.length > 50) container.removeChild(container.firstChild);
+        }
+
+        function clearLog() {
+            const container = document.getElementById('aiLog');
+            if (container) container.innerHTML = '<div class="text-gray-400">▶️ Log cleared</div>';
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const colors = {
+                info: 'bg-[#1a365d] text-white',
+                success: 'bg-green-600 text-white',
+                warning: 'bg-yellow-500 text-white',
+                error: 'bg-red-600 text-white',
+            };
+            const toast = document.createElement('div');
+            toast.className =
+                `toast ${colors[type] || colors.info} rounded-xl px-5 py-3 shadow-lg text-sm font-medium pointer-events-auto flex items-center gap-3`;
+            toast.innerHTML = `<span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        function showTypingIndicator(id, show) {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('hidden', !show);
+        }
+
+        function timeAgo(date) {
+            const diff = Date.now() - new Date(date).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            const days = Math.floor(hrs / 24);
+            return `${days}d ago`;
+        }
+
+        // ============================================================
+        //  LOGIN / LOGOUT (FIXED ROUTING)
+        // ============================================================
+        window.handleLogin = function() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+
+            const user = USERS.find(u => u.email === email && u.password === password);
+            if (!user) {
+                errorDiv.classList.remove('hidden');
+                showToast('❌ Invalid email or password', 'error');
+                return;
+            }
+            errorDiv.classList.add('hidden');
+
+            state.currentUser = user;
+            state.mode = user.role; // <-- CRITICAL: set mode to user's role
+            state.loggedIn = true;
+
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+
+            render(); // this will call updateModeUI() which shows the correct view
+
+            showToast(`✅ Welcome ${user.name} (${user.role})`, 'success');
+            addLog(`🔐 User logged in: ${user.email} (${user.role})`);
+
+            setTimeout(() => {
+                const cards = document.querySelectorAll('.progressive-card');
+                if (cards.length >= 2) cards[1].classList.add('expanded');
+                if (cards.length >= 3) cards[2].classList.add('expanded');
+            }, 300);
+        };
+
+        window.skipLogin = function() {
+            const demoUser = USERS.find(u => u.role === 'tenant');
+            if (demoUser) {
+                state.currentUser = demoUser;
+                state.mode = 'tenant';
+                state.loggedIn = true;
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                render();
+                showToast(`👤 Demo mode: logged in as ${demoUser.name} (Tenant)`, 'info');
+                addLog('🔐 Skipped login – demo tenant');
+                setTimeout(() => {
+                    const cards = document.querySelectorAll('.progressive-card');
+                    if (cards.length >= 2) cards[1].classList.add('expanded');
+                    if (cards.length >= 3) cards[2].classList.add('expanded');
+                }, 300);
+            } else {
+                showToast('⚠️ No demo user found', 'error');
+            }
+        };
+
+        window.logout = function() {
+            state.loggedIn = false;
+            state.currentUser = null;
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+            showToast('👋 Logged out', 'info');
+            addLog('🔓 User logged out');
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+        };
+
+        // ============================================================
+        //  PASSWORD TOGGLE
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('togglePassword');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    const passwordInput = document.getElementById('loginPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.textContent = type === 'password' ? '👁️' : '🙈';
+                });
+            }
+        });
+
+        // ============================================================
+        //  RENDER FUNCTIONS
+        // ============================================================
+        function render() {
+            renderTenantTickets();
+            renderLandlordTickets();
+            renderMessages();
+            updateModeUI();
+            updateCounts();
+            saveState();
+        }
+
+        function updateModeUI() {
+            const tenantView = document.getElementById('tenantView');
+            const landlordView = document.getElementById('landlordView');
+            const btnTenant = document.getElementById('modeTenant');
+            const btnLandlord = document.getElementById('modeLandlord');
+
+            if (state.mode === 'tenant') {
+                tenantView.classList.remove('hidden');
+                landlordView.classList.add('hidden');
+                btnTenant.className = 'px-5 py-1.5 rounded-lg text-sm font-medium transition-all active-tenant';
+                btnLandlord.className = 'px-5 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-600';
+            } else {
+                tenantView.classList.add('hidden');
+                landlordView.classList.remove('hidden');
+                btnLandlord.className = 'px-5 py-1.5 rounded-lg text-sm font-medium transition-all active-landlord';
+                btnTenant.className = 'px-5 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-600';
+            }
+        }
+
+        function updateCounts() {
+            const tenantTickets = state.tickets.filter(t => t.tenant === 'You' || t.tenant === 'Test User');
+            const el = document.getElementById('tenantTicketCount');
+            if (el) el.textContent = tenantTickets.length;
+            const badge = document.getElementById('tenantTicketBadge');
+            if (badge) badge.textContent = `${tenantTickets.length} active`;
+            const lb = document.getElementById('landlordTicketBadge');
+            if (lb) lb.textContent = `${state.tickets.length} total`;
+            const high = state.tickets.filter(t => t.priority === 'high').length;
+            const hc = document.getElementById('highPriorityCount');
+            if (hc) hc.textContent = high;
+            const ht = tenantTickets.filter(t => t.priority === 'high').length;
+            const thc = document.getElementById('tenantHighCount');
+            if (thc) thc.textContent = ht;
+            const resolved = tenantTickets.filter(t => t.status === 'Resolved').length;
+            const trc = document.getElementById('tenantResolvedCount');
+            if (trc) trc.textContent = resolved;
+        }
+
+        function renderTenantTickets() {
+            const container = document.getElementById('tenantTickets');
+            if (!container) return;
+            const tenantTickets = state.tickets.filter(t => t.tenant === 'You' || t.tenant === 'Test User').slice(0, 8);
+            if (tenantTickets.length === 0) {
+                container.innerHTML = `<div class="text-sm text-gray-400 py-2">No maintenance requests yet.</div>`;
+                return;
+            }
+            container.innerHTML = tenantTickets.map(t => {
+                const pClass = t.priority === 'high' ? 'priority-high' : t.priority === 'medium' ?
+                    'priority-medium' : 'priority-low';
+                const pLabel = t.priority.charAt(0).toUpperCase() + t.priority.slice(1);
+                return `
+                    <div class="bg-white/70 rounded-xl p-3 border border-gray-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-medium ${pClass} px-2 py-0.5 rounded-full">${pLabel}</span>
+                                <span class="text-xs text-gray-400">${t.category}</span>
+                                <span class="text-xs text-gray-400">•</span>
+                                <span class="text-xs text-gray-400">${t.status || 'Pending'}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 truncate">${t.description}</p>
+                            ${t.response ? `<p class="text-xs text-gray-500 mt-1">🤖 ${t.response}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs text-gray-400">${timeAgo(t.createdAt)}</span>
+                            <button onclick="openTicketModal(${t.id})" class="text-xs text-[#2b6cb0] font-medium hover:underline">Details →</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderLandlordTickets() {
+            const container = document.getElementById('landlordTickets');
+            if (!container) return;
+            const sorted = [...state.tickets].sort((a, b) => {
+                const order = { high: 0, medium: 1, low: 2 };
+                return order[a.priority] - order[b.priority];
+            });
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="text-sm text-gray-400 py-2">No tickets yet.</div>`;
+                return;
+            }
+            container.innerHTML = sorted.map(t => {
+                const pClass = t.priority === 'high' ? 'priority-high' : t.priority === 'medium' ?
+                    'priority-medium' : 'priority-low';
+                const pLabel = t.priority.charAt(0).toUpperCase() + t.priority.slice(1);
+                return `
+                    <div class="bg-white/70 rounded-xl p-3 border border-gray-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-medium ${pClass} px-2 py-0.5 rounded-full">${pLabel}</span>
+                                <span class="text-xs text-gray-400">${t.category}</span>
+                                <span class="text-xs text-gray-400">•</span>
+                                <span class="text-xs text-gray-400">${t.status || 'Pending'}</span>
+                                <span class="text-xs text-gray-400">•</span>
+                                <span class="text-xs text-gray-400">${t.tenant || 'Unknown'}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 truncate">${t.description}</p>
+                            ${t.response ? `<p class="text-xs text-gray-500 mt-1">🤖 ${t.response}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs text-gray-400">${timeAgo(t.createdAt)}</span>
+                            <button onclick="openTicketModal(${t.id})" class="text-xs text-[#2b6cb0] font-medium hover:underline">Details →</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messageFeed');
+            if (!container) return;
+            const sorted = [...state.messages].sort((a, b) => {
+                if (a.flagged && !b.flagged) return -1;
+                if (!a.flagged && b.flagged) return 1;
+                return (a.sentiment || 0) - (b.sentiment || 0);
+            });
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="text-sm text-gray-400 py-2">No messages yet.</div>`;
+                return;
+            }
+            container.innerHTML = sorted.map(m => {
+                const sClass = (m.sentiment || 0) < -0.3 ? 'sentiment-negative' : (m.sentiment || 0) > 0.3 ?
+                    'sentiment-positive' : 'sentiment-neutral';
+                const label = (m.sentiment || 0) < -0.3 ? '🔴' : (m.sentiment || 0) > 0.3 ? '🟢' : '🟡';
+                const flaggedBadge = m.flagged ?
+                    '<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full ml-2">🚨 Flagged</span>' :
+                    '';
+                const scoreDisplay = m.sentiment !== undefined ? `${(m.sentiment * 100).toFixed(0)}%` : 'N/A';
+                return `
+                    <div class="bg-white/60 rounded-xl p-3 border border-gray-200/50 ${sClass} message-bubble">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    <span class="text-sm font-medium text-gray-800">${m.tenant || 'Tenant'}</span>
+                                    <span class="text-xs text-gray-400">• ${timeAgo(m.time || new Date())}</span>
+                                    ${flaggedBadge}
+                                </div>
+                                <p class="text-sm text-gray-700">${m.text}</p>
+                            </div>
+                            <div class="shrink-0 text-right">
+                                <span class="text-lg">${label}</span>
+                                <div class="text-xs text-gray-400">${scoreDisplay}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================================
+        //  TENANT TABS (FIXED)
+        // ============================================================
+        function switchTenantTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tenant-tab').forEach(el => el.classList.remove('active'));
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            // Activate the clicked button
+            document.querySelector(`.tenant-tab[data-tab="${tabId}"]`).classList.add('active');
+        }
+
+        // ============================================================
+        //  MODAL
+        // ============================================================
+        function openTicketModal(id) {
+            const ticket = state.tickets.find(t => t.id === id);
+            if (!ticket) return;
+            const body = document.getElementById('ticketModalBody');
+            body.innerHTML = `
+                <div><span class="font-semibold">ID:</span> #${ticket.id}</div>
+                <div><span class="font-semibold">Description:</span> ${ticket.description}</div>
+                <div><span class="font-semibold">Priority:</span> <span class="font-medium ${ticket.priority === 'high' ? 'text-red-600' : ticket.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'}">${ticket.priority.toUpperCase()}</span></div>
+                <div><span class="font-semibold">Category:</span> ${ticket.category}</div>
+                <div><span class="font-semibold">Status:</span> ${ticket.status || 'Pending'}</div>
+                <div><span class="font-semibold">Tenant:</span> ${ticket.tenant || 'Unknown'}</div>
+                <div><span class="font-semibold">Reported:</span> ${new Date(ticket.createdAt).toLocaleString()}</div>
+                ${ticket.response ? `<div><span class="font-semibold">Auto‑response:</span> ${ticket.response}</div>` : ''}
+                ${ticket.analysis && ticket.analysis.reasoning ? `<div><span class="font-semibold">AI Reasoning:</span> ${ticket.analysis.reasoning}</div>` : ''}
+            `;
+            document.getElementById('ticketModal').classList.remove('hidden');
+            addLog(`🔍 Opened details for ticket #${id}`);
+        }
+
+        function closeModal() {
+            document.getElementById('ticketModal').classList.add('hidden');
+        }
+        document.getElementById('ticketModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ============================================================
+        //  TOGGLE SEARCH / TICKET SECTIONS
+        // ============================================================
+        function toggleSearch() {
+            const el = document.querySelector('.search-expand') || document.querySelector('.progressive-card');
+            if (el) {
+                el.classList.toggle('open');
+                const chev = document.getElementById('filterChevron');
+                if (chev) chev.textContent = el.classList.contains('open') ? '▴' : '▾';
+            }
+        }
+
+        function toggleTicketSection() {
+            const cards = document.querySelectorAll('.progressive-card');
+            const card = cards[1]; // tenant ticket card
+            if (card) {
+                card.classList.toggle('expanded');
+                const chev = document.getElementById('ticketChevron');
+                if (chev) chev.textContent = card.classList.contains('expanded') ? '▴' : '▾';
+            }
+        }
+
+        function toggleTicketSectionLandlord() {
+            const cards = document.querySelectorAll('.progressive-card');
+            const card = cards[cards.length - 1];
+            if (card) {
+                card.classList.toggle('expanded');
+                const chev = document.getElementById('ticketChevronL');
+                if (chev) chev.textContent = card.classList.contains('expanded') ? '▴' : '▾';
+            }
+        }
+
+        // ============================================================
+        //  MAINTENANCE ACTIONS
+        // ============================================================
+        async function submitMaintenance() {
+            const input = document.getElementById('newTicketDesc');
+            if (!input) return;
+            const desc = input.value.trim();
+            if (!desc) {
+                showToast('Please describe the issue.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('submitTicketBtn');
+            if (btn) { btn.disabled = true;
+                btn.textContent = 'Submitting...'; }
+            showTypingIndicator('ticketTypingIndicator', true);
+            addLog(`📝 New ticket: "${desc}"`);
+
+            try {
+                const analysis = await AIAgent.triage(desc);
+                const ticket = {
+                    id: state.nextTicketId++,
+                    description: desc,
+                    priority: analysis.priority,
+                    category: analysis.category,
+                    status: 'Pending',
+                    createdAt: new Date(),
+                    tenant: 'You',
+                    response: analysis.response,
+                    analysis,
+                };
+                state.tickets.push(ticket);
+                const cards = document.querySelectorAll('.progressive-card');
+                if (cards.length >= 2) cards[1].classList.add('expanded');
+                render();
+                showToast(`✅ Ticket submitted! ${analysis.priority.toUpperCase()} priority · ${analysis.response}`, 'success');
+                addLog(`✅ Ticket #${ticket.id} – ${analysis.priority} priority, ${analysis.category}`);
+                input.value = '';
+            } catch (e) {
+                showToast('❌ Error submitting ticket. Please try again.', 'error');
+                addLog(`❌ Error: ${e.message}`);
+            } finally {
+                if (btn) { btn.disabled = false;
+                    btn.textContent = 'Submit request'; }
+                showTypingIndicator('ticketTypingIndicator', false);
+            }
+        }
+
+        async function quickTicket(desc) {
+            showTypingIndicator('ticketTypingIndicator', true);
+            addLog(`⚡ Quick ticket: "${desc}"`);
+
+            try {
+                const analysis = await AIAgent.triage(desc);
+                const ticket = {
+                    id: state.nextTicketId++,
+                    description: desc,
+                    priority: analysis.priority,
+                    category: analysis.category,
+                    status: 'Pending',
+                    createdAt: new Date(),
+                    tenant: 'You',
+                    response: analysis.response,
+                    analysis,
+                };
+                state.tickets.push(ticket);
+                render();
+                showToast(`📋 Quick ticket: ${analysis.priority.toUpperCase()} priority · ${analysis.response}`, 'info');
+                addLog(`✅ Quick ticket #${ticket.id} – ${analysis.priority}`);
+            } catch (e) {
+                showToast('❌ Error with quick ticket.', 'error');
+            } finally {
+                showTypingIndicator('ticketTypingIndicator', false);
+            }
+        }
+
+        // ============================================================
+        //  MESSAGE ACTIONS
+        // ============================================================
+        async function sendTenantMessage() {
+            const input = document.getElementById('tenantChatInput');
+            if (!input) return;
+            const text = input.value.trim();
+            if (!text) {
+                showToast('Please type a message.', 'warning');
+                return;
+            }
+            showTypingIndicator('tenantChatTyping', true);
+            addLog(`💬 Tenant message: "${text}"`);
+
+            try {
+                const sentiment = await AIAgent.analyzeSentiment(text);
+                const msg = {
+                    id: state.nextMsgId++,
+                    text,
+                    sentiment: sentiment.score,
+                    flagged: sentiment.flagged,
+                    tenant: 'You',
+                    time: new Date(),
+                };
+                state.messages.push(msg);
+                render();
+                showToast(
+                    `📨 Message sent · Sentiment: ${sentiment.label} (${(sentiment.score * 100).toFixed(0)}%) ${sentiment.flagged ? '🚨 Flagged' : ''}`,
+                    sentiment.flagged ? 'error' : 'success'
+                );
+                addLog(`📨 Message sentiment: ${sentiment.label} (${(sentiment.score * 100).toFixed(0)}%)`);
+                input.value = '';
+            } catch (e) {
+                showToast('❌ Error sending message.', 'error');
+            } finally {
+                showTypingIndicator('tenantChatTyping', false);
+            }
+        }
+
+        async function sendLandlordMessage() {
+            const input = document.getElementById('landlordMsgInput');
+            if (!input) return;
+            const text = input.value.trim();
+            if (!text) {
+                showToast('Please type a message.', 'warning');
+                return;
+            }
+            showTypingIndicator('landlordChatTyping', true);
+            addLog(`💬 Landlord message: "${text}"`);
+
+            try {
+                const sentiment = await AIAgent.analyzeSentiment(text);
+                const msg = {
+                    id: state.nextMsgId++,
+                    text,
+                    sentiment: sentiment.score,
+                    flagged: sentiment.flagged,
+                    tenant: 'Landlord',
+                    time: new Date(),
+                };
+                state.messages.push(msg);
+                render();
+                showToast(
+                    `📨 Message sent · Sentiment: ${sentiment.label} (${(sentiment.score * 100).toFixed(0)}%)`,
+                    sentiment.flagged ? 'error' : 'success'
+                );
+                addLog(`📨 Landlord message sentiment: ${sentiment.label}`);
+                input.value = '';
+            } catch (e) {
+                showToast('❌ Error sending message.', 'error');
+            } finally {
+                showTypingIndicator('landlordChatTyping', false);
+            }
+        }
+
+        async function quickMessage(text) {
+            showTypingIndicator('tenantChatTyping', true);
+            try {
+                const sentiment = await AIAgent.analyzeSentiment(text);
+                const msg = {
+                    id: state.nextMsgId++,
+                    text,
+                    sentiment: sentiment.score,
+                    flagged: sentiment.flagged,
+                    tenant: 'Test User',
+                    time: new Date(),
+                };
+                state.messages.push(msg);
+                render();
+                showToast(
+                    `🧪 Test message · Sentiment: ${sentiment.label} (${(sentiment.score * 100).toFixed(0)}%) ${sentiment.flagged ? '🚨 Flagged' : ''}`,
+                    sentiment.flagged ? 'error' : 'success'
+                );
+                addLog(`🧪 Quick message: ${sentiment.label}`);
+            } catch (e) {
+                showToast('❌ Error with quick message.', 'error');
+            } finally {
+                showTypingIndicator('tenantChatTyping', false);
+            }
+        }
+
+        // ============================================================
+        //  TESTING HARNESS
+        // ============================================================
+        async function testScenario(type, input) {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.innerHTML = `
+                <div class="flex items-center gap-2 text-gray-500">
+                    <span>🤖 AI is thinking</span>
+                    <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="typing-dot inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                </div>
+            `;
+
+            try {
+                if (type === 'maintenance') {
+                    const analysis = await AIAgent.triage(input);
+                    const pEmoji = analysis.priority === 'high' ? '🔴' : analysis.priority === 'medium' ? '🟡' : '🟢';
+                    resultDiv.innerHTML = `
+                        <div class="space-y-1">
+                            <div class="font-medium text-gray-800">🧠 AI Agent Analysis</div>
+                            <div class="flex flex-wrap gap-3 text-sm">
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">${pEmoji} Priority: <strong>${analysis.priority.toUpperCase()}</strong></span>
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">📂 Category: <strong>${analysis.category}</strong></span>
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">📝 Response: <strong>${analysis.response}</strong></span>
+                            </div>
+                            ${analysis.reasoning ? `<div class="mt-2 p-3 bg-[#1a365d]/5 rounded-xl text-sm text-gray-700 border border-[#1a365d]/10">🧠 Reasoning: ${analysis.reasoning}</div>` : ''}
+                            <div class="text-xs text-gray-400 mt-1">Input: "${input}"</div>
+                        </div>
+                    `;
+                    const ticket = {
+                        id: state.nextTicketId++,
+                        description: input,
+                        priority: analysis.priority,
+                        category: analysis.category,
+                        status: 'Pending',
+                        createdAt: new Date(),
+                        tenant: 'Test User',
+                        response: analysis.response,
+                        analysis,
+                    };
+                    state.tickets.push(ticket);
+                    render();
+                    showToast(`🧪 Test scenario: ${analysis.priority.toUpperCase()} priority ticket created.`, 'info');
+                    addLog(`🧪 Test maintenance: ${analysis.priority} – ${input.substring(0, 30)}...`);
+                } else if (type === 'sentiment') {
+                    const analysis = await AIAgent.analyzeSentiment(input);
+                    const emoji = analysis.label === 'negative' ? '😤' : analysis.label === 'positive' ? '😊' : '😐';
+                    resultDiv.innerHTML = `
+                        <div class="space-y-1">
+                            <div class="font-medium text-gray-800">🧠 AI Sentiment Analysis</div>
+                            <div class="flex flex-wrap gap-3 text-sm">
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">${emoji} Sentiment: <strong>${analysis.label.toUpperCase()}</strong></span>
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">📊 Score: <strong>${(analysis.score * 100).toFixed(0)}%</strong></span>
+                                <span class="bg-gray-100 px-3 py-1 rounded-full">🚨 Flagged: <strong>${analysis.flagged ? 'Yes' : 'No'}</strong></span>
+                            </div>
+                            <div class="mt-2 p-3 bg-[#1a365d]/5 rounded-xl text-sm text-gray-700 border border-[#1a365d]/10">
+                                ${analysis.flagged ? '⚠️ This message has been flagged for urgent attention.' : '✅ This message appears to be neutral or positive.'}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1">Input: "${input}"</div>
+                        </div>
+                    `;
+                    const msg = {
+                        id: state.nextMsgId++,
+                        text: input,
+                        sentiment: analysis.score,
+                        flagged: analysis.flagged,
+                        tenant: 'Test User',
+                        time: new Date(),
+                    };
+                    state.messages.push(msg);
+                    render();
+                    showToast(`🧪 Test sentiment: ${analysis.label} (${(analysis.score * 100).toFixed(0)}%)`, analysis
+                        .flagged ? 'error' : 'success');
+                    addLog(`🧪 Test sentiment: ${analysis.label} – ${input.substring(0, 30)}...`);
+                }
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="text-red-600">❌ Error: ${e.message}</div>`;
+                addLog(`❌ Test error: ${e.message}`);
+            }
+        }
+
+        // ============================================================
+        //  DEMO MODE
+        // ============================================================
+        let demoInterval = null;
+
+        function toggleDemo() {
+            const btn = document.getElementById('demoModeBtn');
+            if (state.demoRunning) {
+                clearInterval(demoInterval);
+                state.demoRunning = false;
+                btn.textContent = '▶ Demo';
+                btn.classList.remove('bg-green-100', 'text-green-700');
+                btn.classList.add('bg-gray-200');
+                showToast('⏸️ Demo paused', 'info');
+                addLog('⏸️ Demo mode paused');
+            } else {
+                state.demoRunning = true;
+                btn.textContent = '⏹ Stop';
+                btn.classList.remove('bg-gray-200');
+                btn.classList.add('bg-green-100', 'text-green-700');
+                showToast('▶️ Demo mode started', 'info');
+                addLog('▶️ Demo mode started');
+                runDemoStep();
+                demoInterval = setInterval(runDemoStep, 12000);
+            }
+        }
+
+        const demoScenarios = [
+            { type: 'maintenance', text: 'The AC unit is making a loud grinding noise and not cooling.' },
+            { type: 'sentiment', text: 'I am so frustrated with the constant noise from the construction next door.' },
+            { type: 'maintenance', text: 'The kitchen sink is clogged and water is backing up.' },
+            { type: 'sentiment', text: 'Thank you for fixing the elevator so quickly! You are amazing.' },
+            { type: 'maintenance', text: 'There is a strong smell of gas in the hallway. Please send someone now!' },
+            { type: 'sentiment', text: 'This is the third time I report the broken lock and nobody cares.' },
+        ];
+        let demoIndex = 0;
+
+        function runDemoStep() {
+            if (!state.demoRunning) return;
+            const scenario = demoScenarios[demoIndex % demoScenarios.length];
+            demoIndex++;
+            testScenario(scenario.type, scenario.text);
+            if (demoIndex % 3 === 0) {
+                state.mode = state.mode === 'tenant' ? 'landlord' : 'tenant';
+                render();
+                showToast(`🔄 Switched to ${state.mode} view`, 'info');
+            }
+        }
+
+        // ============================================================
+        //  EVENT BINDINGS
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mode toggle buttons (role check)
+            document.getElementById('modeTenant').addEventListener('click', function() {
+                if (state.currentUser && state.currentUser.role !== 'tenant') {
+                    showToast('❌ You are logged in as a landlord. Switch to tenant account to view this.',
+                        'error');
+                    return;
+                }
+                state.mode = 'tenant';
+                render();
+                showToast('👤 Switched to Tenant view', 'info');
+            });
+            document.getElementById('modeLandlord').addEventListener('click', function() {
+                if (state.currentUser && state.currentUser.role !== 'landlord') {
+                    showToast('❌ You are logged in as a tenant. Switch to landlord account to view this.',
+                        'error');
+                    return;
+                }
+                state.mode = 'landlord';
+                render();
+                showToast('🏠 Switched to Landlord view', 'info');
+            });
+            document.getElementById('demoModeBtn').addEventListener('click', toggleDemo);
+
+            // Enter key for inputs
+            document.getElementById('newTicketDesc').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') submitMaintenance();
+            });
+            document.getElementById('tenantChatInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') sendTenantMessage();
+            });
+            document.getElementById('landlordMsgInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') sendLandlordMessage();
+            });
+        });
+
+        // ============================================================
+        //  INIT
+        // ============================================================
+        loadState();
+
+        // Seed data
+        if (state.tickets.length === 0) {
+            const seed = [
+                { id: state.nextTicketId++, description: 'Burst pipe in the kitchen, water everywhere!',
+                    priority: 'high', category: 'Plumbing', status: 'In progress', createdAt: new Date(Date.now() -
+                        3600000), tenant: 'Alex R.', response: 'Emergency plumber dispatched. ETA 25 min.' },
+                { id: state.nextTicketId++, description: 'The cabinet door handle is loose and keeps falling off.',
+                    priority: 'low', category: 'Maintenance', status: 'Pending', createdAt: new Date(Date.now() -
+                        86400000), tenant: 'Sam K.', response: 'Scheduled for next Tuesday.' },
+                { id: state.nextTicketId++, description: 'No heating in the living room, it\'s freezing.',
+                    priority: 'high', category: 'HVAC', status: 'In progress', createdAt: new Date(Date.now() -
+                        7200000), tenant: 'Jordan P.', response: 'HVAC technician en route.' },
+                { id: state.nextTicketId++, description: 'The bathroom faucet drips constantly at night.',
+                    priority: 'medium', category: 'Plumbing', status: 'Pending', createdAt: new Date(Date.now() -
+                        172800000), tenant: 'Taylor W.', response: 'Parts ordered. Will fix by Friday.' },
+            ];
+            state.tickets = seed;
+        }
+        if (state.messages.length === 0) {
+            const seedMsg = [
+                { id: state.nextMsgId++, text: 'The water heater is making a loud noise and I\'m worried it might break.',
+                    sentiment: -0.6, flagged: true, tenant: 'Alex R.', time: new Date(Date.now() - 1800000) },
+                { id: state.nextMsgId++, text: 'The apartment is absolutely perfect! I love the natural light.',
+                    sentiment: 0.85, flagged: false, tenant: 'Sam K.', time: new Date(Date.now() - 7200000) },
+                { id: state.nextMsgId++, text: 'This is unacceptable. The roof has been leaking for 3 days!',
+                    sentiment: -0.9, flagged: true, tenant: 'Jordan P.', time: new Date(Date.now() - 3600000) },
+                { id: state.nextMsgId++, text: 'Thanks for the quick maintenance response yesterday!', sentiment: 0.7,
+                    flagged: false, tenant: 'Taylor W.', time: new Date(Date.now() - 14400000) },
+            ];
+            state.messages = seedMsg;
+        }
+
+        // Show login
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('app').classList.add('hidden');
+        document.getElementById('loginError').classList.add('hidden');
+
+        addLog('🚀 Nestgo AI prototype ready');
+        showToast('🔐 Please log in with your credentials', 'info');
+
+        console.log('✅ Login routing fixed – Tenant → Tenant view, Landlord → Landlord view.');
+        console.log('🔑 Try tenant1@nestgo.com / tpass1 or landlord1@nestgo.com / pass123');
+    </script>
+
+</body>
+</html>
